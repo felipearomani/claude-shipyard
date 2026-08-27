@@ -40,8 +40,13 @@ is the only channel through which you talk to whoever executes.
 ## Setup this skill expects
 
 - A **handoff directory**. Default `.fleet/<epic>/` at the workspace root. If the
-  workspace already has a convention for shared agent artifacts, use that one
-  instead and say so in the plan — the coordinator reads whatever you write down.
+  workspace already has a convention for shared agent artifacts, use that instead —
+  but note the circularity: a fresh coordinator session finds the plan BY the
+  directory, so it cannot learn a non-default location from a file inside it. A
+  non-default location has to be discoverable from a fixed point: leave a one-line
+  pointer at `.fleet/README.md` ("handoff lives at <path>"), or make sure the
+  workspace's own `CLAUDE.md`/`AGENTS.md` names it, or tell the human to pass the
+  path to the coordinator.
 - A **tracker**, if the work is going on a board. Any of Jira, GitHub
   Issues/Projects, Asana, Linear. Ask which one if it is not obvious.
 - Nothing else. Everything below degrades gracefully when a tool is missing; where
@@ -56,8 +61,11 @@ Detect this before acting, because the three inputs need different work:
 - **Finished spec** — a document with the design already decided. Do not rewrite
   it: read it, validate it against the code (specs age), and go to Phase 3.
 - **Populated board with thin tasks** — the tickets exist but have no acceptance
-  criteria, no dependencies, no known traps. Go to Phase 3, treating each ticket
-  as a draft to enrich, preserving its key and whatever is already written.
+  criteria, no dependencies, no known traps. Run Phase 1 first, scoped per ticket —
+  the file:line, the precedent and the trap that Phase 3.1 demands only exist if you
+  opened the code, and enriching a ticket you never investigated produces confident
+  criteria about code you never read. Then Phase 3, treating each ticket as a draft
+  to enrich, preserving its key and whatever is already written.
 
 If you are unsure which case you are in, ask — the cost of getting it wrong here
 is rewriting a spec that already existed, or planning on top of a design nobody
@@ -268,9 +276,10 @@ that the top tier is several times the default.
 | **High** (e.g. `opus`) | A lane whose path the spec does **not** close: a design to decide inside the slice, a refactor across layers, diagnosis of an unknown cause, a contract to invent |
 | **Top** (e.g. `fable`) | Long-horizon, high-risk reasoning: fixing distributed synchronization, arbitration/concurrency, a destructive migration, a slice where being wrong costs money or customer data |
 
-Use the tier names your installation actually exposes — run
-`${CLAUDE_PLUGIN_ROOT}/scripts/detect-launcher.sh` if you need to know what this
-build accepts.
+Use the tier names your installation actually exposes — `claude --help` documents the
+`--model` and `--effort` flags on this build (the launcher-detection script reports only
+WHETHER those flags exist, not their accepted values). If the build documents no values,
+recommend by tier (mid / high / top) and let the coordinator map names at dispatch.
 
 Rules that avoid the two opposite mistakes:
 
@@ -296,7 +305,7 @@ Rules that avoid the two opposite mistakes:
 |---|---|
 | `low` | Mechanical, closed work: renaming, migrating call sites, applying an already-described patch. Produces fewer tool calls and less preamble |
 | `medium` | A small, well-bounded slice with a clear precedent to follow |
-| **`xhigh`** (fleet default) | Every genuinely autonomous lane — it is the best level for code and agentic work, and the harness default. An agent that will spend hours alone, review and merge belongs here |
+| **`xhigh`** (fleet default) | Every genuinely autonomous lane — it is the best level for code and agentic work. An agent that will spend hours alone, review and merge belongs here |
 | `max` | Correctness matters more than cost: money, customer data, a destructive migration, concurrency. Usually rides along with the top model tier |
 
 `high` exists and is reasonable, but for an autonomous fleet prefer `xhigh` — the
@@ -316,9 +325,8 @@ answers, and a lane above the default has to carry one of them:
 - **"Here is what would make it default-tier"** — the normal case. An expensive lane is usually
   an under-specified one, and this line is what lets the reviewer choose between paying more and
   closing the spec.
-- **"This one is not reducible"** — only for a lane whose bottleneck is *diagnosis* rather than
-  execution, where the spec is what the investigation will produce. Say so explicitly, so nobody
-  tries to economize there later.
+- **"This one is not reducible"** — only the diagnosis case from the exception bullet above.
+  Say so explicitly, so nobody tries to economize there later.
 
 A lane above the default carrying neither line is an unreviewed cost. Do not write the
 recommendation until you know which of the two it is.
@@ -367,7 +375,9 @@ is not enumerated is what disappears when the package grows:
 2. `plan.md` — the handoff in the format of `references/plan-format.md`
 3. `contract.md` — the frozen contract
 4. `handoff-comments.md` — one comment per task, **drafted now**
-5. the investigation record (what was measured, what remains to be measured)
+5. the investigation record — this is the MEASURED/DERIVED/ASSUMED table INSIDE
+   `plan.md` (see the format), not a sixth file; confirming it exists means confirming
+   the table is filled in, not hunting for a file that was never supposed to exist
 
 Item 4 is written here rather than in Phase 6 for a practical reason: right now you
 have the context of every task in your head. Posting is Phase 6; drafting is this
@@ -402,8 +412,12 @@ Iterate in place (republish to the same location) until they approve.
 Only after approval, and in the destination the human chooses. Ask which if it is not
 obvious.
 
-The details that avoid rework are in `references/tracker-writeback.md` — read it
-before creating in bulk. The two that bite hardest:
+Two rules apply to EVERY tracker, and they earn their place here because each cost a real
+cleanup: **create ONE task first, read it back, confirm the parent and the required fields
+survived — only then create the rest** (discovering at item 20 that a field was wrong means
+editing 20); and **a create response is not a created-correctly response** — the link/parent
+field fails silently on some trackers. Per-tracker mechanics and the other traps are in
+`references/tracker-writeback.md` — read it before creating in bulk. The two that bite hardest:
 
 - **Confirm the parent by reading it back after creating.** Creating is not the same
   as creating correctly: one batch of eight issues was born orphaned for lack of a
@@ -419,6 +433,11 @@ The package has to outlive your session. Leave it in two places:
 **On disk**, a `plan.md` in the format of `references/plan-format.md` — this is what
 the coordinator skill opens in a fresh session and reads in order to dispatch. A
 fixed format matters: the coordinator should not have to interpret prose.
+
+**In the epic ticket**, the full body of `plan.md` as a comment (or attachment) — the disk
+copy is the working copy and it is perishable; a fresh clone, a second machine or a wiped
+handoff directory loses it, and every pointer in the task comments points AT it. The epic
+carries the only copy that survives the machine.
 
 **In the task comments**, a short comment per task pointing at the plan, the lane it
 belongs to, and its dependency. This is not redundancy: the disk is local and

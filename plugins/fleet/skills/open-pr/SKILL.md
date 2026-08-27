@@ -95,7 +95,19 @@ git rebase origin/<base>
 ## Phase 3 — Lint / format
 
 Auto-detect from the repo. Run the **fix/format** variant (which mutates files) before the
-**check** variant. Read these signals **in order** and run every command that matches:
+**check** variant — but **scope every fix/format command to the files this branch changed**,
+never the whole tree:
+
+```bash
+CHANGED=$(git diff --name-only origin/<base>...HEAD)
+```
+
+A tree-wide `gofmt -w .` or `ruff format .` rewrites files other work owns and embarks them in
+this PR — in a fleet, that is an agent editing across its lane boundary, and even solo it turns
+a focused diff into a formatting sweep. Feed `$CHANGED` (filtered by extension) to the
+formatter; fall back to tree-wide only when the tool cannot take file arguments AND the repo is
+not shared with parallel work. Read these signals **in order** and run every command that
+matches, scoped as above:
 
 | Signal | Run |
 |---|---|

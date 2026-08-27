@@ -55,6 +55,19 @@ Everything else this skill uses is optional and degrades gracefully:
   that there are two and that they are independent.
 - **A recurring-wakeup mechanism** for the monitoring loop. If the harness has one,
   use it. If it does not, tell the human the cadence you need and ask them to poke you.
+- **A way to list agents and a way to message them.** These are two different capabilities and
+  each has its own fallback — establish both BEFORE dispatch, because the whole monitoring loop
+  stands on them:
+  - *Listing*: the harness's agent-listing tool if this session has one; otherwise
+    `claude agents --json` from the CLI (id, name, state per agent). One of the two exists on
+    any build that can dispatch.
+  - *Messaging*: the harness's agent-messaging tool if this session has one. There is **no CLI
+    fallback for sending** — so if this session cannot message agents, say so at the gate and
+    put the fallback INTO the launch prompts: each agent appends status lines to a file in the
+    handoff directory (`<handoff-dir>/status-agent-N.md`) after every task transition, and you
+    read files instead of messages. Reading an agent's output (`claude logs <id>`, when the
+    build has it) also substitutes for asking. Discovering mid-loop that you cannot message
+    anyone is a stall you chose at dispatch time.
 
 ## The contract that makes this work
 
@@ -74,17 +87,35 @@ legitimate exception, and that is when you escalate.
 
 ## Phase 1 — Pre-dispatch gate (never skip)
 
-### 1.0 Is there a plan from the planner skill?
+### 1.0 First: is a fleet already running for this epic?
+
+Before reading any plan, look for an existing **fleet register** in the handoff directory and
+list the live agents (Setup told you how). If either shows agents for this epic — because a
+previous session launched them, or because the user opened a second coordinator — **this session
+adopts, it does not dispatch**: read the register, reconcile it against the live listing (an
+agent in the register but not alive goes through the dead-agent recovery in Phase 4; an agent
+alive but not in the register gets asked who it is and added), and enter the Phase 4 loop.
+Dispatching against a plan that already has a fleet running duplicates every lane — two agents
+per boundary, both legitimate, colliding in every file they own.
+
+### 1.0b Is there a plan from the planner skill?
 
 Look for a `plan.md` in the handoff directory. If it exists, it already carries lanes,
 tasks with acceptance criteria, a frozen contract, blockers and mandates to request —
-in the format of the planner skill's `references/plan-format.md`.
+in the format of `${CLAUDE_PLUGIN_ROOT}/skills/planner/references/plan-format.md` (check its `plan-format:` version marker; a plan without one predates the format — re-validate it field by field).
 
 With a plan, Phase 1 becomes **revalidation, not survey**: check what changed since it
 was written. A blocker marked resolved may have come back (credentials expire, secrets
 get rotated, branch protection gets re-enabled), and the base branch has moved.
 Re-check the blockers and the MEASURED/DERIVED/ASSUMED table — what was ASSUMED stays
 ASSUMED until somebody measures it.
+
+**And re-confirm every mandate with the human at YOUR gate, whatever the plan's `Granted?`
+column says.** A ✅ in plan.md is a record of a conversation another session had — an artifact
+claiming the human's approval, which is exactly what the Authorizations section forbids you to
+accept from an agent. The rule does not soften because the artifact came from the planner.
+Confirming costs one question at a gate you were running anyway; skipping it makes the launch
+prompt a laundered mandate.
 
 Without a plan, work the steps below from scratch. If the work is not even specified
 yet — tasks with no acceptance criteria, vague scope — tell the human the previous step
@@ -128,6 +159,12 @@ Sweep explicitly:
   prevent — and it is easy to commit when the human is unavailable.
 - **Dependencies between lanes**: if task B only exists after A, they are not parallel.
   Either they go to the same agent in series, or B waits.
+- **Leftovers from a previous round**: `git worktree list` and a look at the handoff directory,
+  before dispatch. A crashed agent or an interrupted session leaves worktrees and branches named
+  like the ones your lanes will create — and `git worktree add` fails on an existing branch, so
+  the collision lands mid-dispatch instead of here, where it is cheap. Inventory them: adopt
+  what is resumable, ticket what is half-done, remove what is dead (`git worktree remove`
+  without `--force` — the refusal is information).
 
 ### 1.3 Freeze the contract between lanes
 
@@ -185,11 +222,14 @@ becomes a task in the same epic; the epic's implicit definition of done becomes 
 finding from every review closed", which is infinite by construction. One epic gained 20
 tasks in a single night that way.
 
-The rule you give the agents, which needs to be in the prompt:
+The rule you give the agents, which needs to be in the prompt — the same three-way rule the
+prompt template carries, so the two texts you paste never disagree:
 
-> A finding that is **not a regression of your own slice** goes to the sink epic as a
-> child, with a complete description, and you **move on**. Do not implement it, do not
-> inflate your task.
+> **Small and inside your own boundary** (fits the PR you are already making): absorb it, with
+> a test. **A regression of your own slice**: fix it in your slice. **Anything else** — another
+> subsystem, an architecture decision, a pre-existing finding you merely stumbled on — goes to
+> the sink epic as a child, with a complete description, and you **move on**. Do not implement
+> it, do not inflate your task.
 
 The round's scope freezes at dispatch. The sink preserves the trail.
 
@@ -226,7 +266,10 @@ Having it in a file matters: you re-read it, resend it and audit it without depe
 what you remembered.
 
 **Use the template in `references/agent-prompt-template.md`** — it already carries the
-full cycle, the mandates, the evidence rules and the stopping condition.
+full cycle, the mandates, the evidence rules and the stopping condition. Two fields in it are
+filled FROM THE PLAN, not from your session: the **branch-from ref** (the plan's `Branch from:`
+line — an agent branching from local HEAD is the staleness failure Phase 1 exists to prevent)
+and the **frozen contract** (pasted, with its canonical path cited).
 
 ## Phase 3 — Dispatch
 
@@ -272,7 +315,7 @@ change over time; check current pricing before scaling a fleet.
 |---|---|
 | `low` | Mechanical, closed work: renaming, migrating call sites, applying an already-described patch |
 | `medium` | A small, bounded slice with a clear precedent |
-| **`xhigh`** (fleet default) | A genuinely autonomous lane — the best level for code and agentic work, and the harness default |
+| **`xhigh`** (fleet default) | A genuinely autonomous lane — the best level for code and agentic work |
 | `max` | Correctness above cost: money, customer data, a destructive migration, concurrency |
 
 `high` is reasonable, but for an agent that will run for hours alone prefer `xhigh`: the
@@ -303,6 +346,11 @@ like that is a known block, which Phase 1 forbids.
 - The decision that justified the expensive model was sealed at the gate. Then it stopped
   existing, and so did its cost.
 
+**When you RAISE a lane above the default tier, write the exit next to it in the register,
+exactly as the planner does in the plan** — either the one line naming what would have to be
+specified for it to fit the default, or an explicit "not reducible" for a diagnosis bottleneck.
+A raise carrying neither line is an unreviewed cost, whoever makes it.
+
 **Record model AND effort in the fleet register, with the reason if you changed what the
 plan said.** Without that, nobody knows afterwards whether the lane was expensive out of
 necessity or out of inertia — and you lose the only evidence of whether the planner's
@@ -323,23 +371,27 @@ it and do not lower.
 almost never the difficulty of the code — it is that the planning is shallow. There, the cheap
 fix is closing the specification, not upgrading the whole fleet.
 
-**Right after launching, record the fleet** — a file in the handoff directory or in memory,
-with: agent name, PID, **model**, **effort**, lane, assigned tasks, dispatch time, prompt path.
-You will need this to shut the processes down at the end, and to rebuild state if your own
-session compacts.
+**Right after launching, record the fleet** — a file in the handoff directory (a file, not a
+mental note: the register exists precisely to survive your own session compacting), with: agent
+name, **session id**, PID, **model**, **effort**, lane, assigned tasks, dispatch time, prompt
+path. The dispatch output prints the session id (e.g. `backgrounded · 5677e849 · [NAME]`) — the
+session id is the **stable handle** (`claude stop <id>`, `claude logs <id>`, `claude attach
+<id>`); the PID is secondary and recyclable. Record both. You will need this to shut the fleet
+down at the end, and to rebuild state in a fresh session.
 
 ```markdown
 ## Fleet — <epic> — <date>
-| Agent | PID | Model | Effort | Lane | Tasks | Prompt |
-|---|---|---|---|---|---|---|
-| [SHOP][SHOP-331][02] | 96906 | sonnet | xhigh | fleet/identity | 614,615,616,617 | .fleet/.../agent-2.md |
-| [SHOP][SHOP-331][03] | 97753 | opus *(plan said sonnet; raised: gate design still open)* | max *(touches money)* | money/lease | 427,411,484 | .../agent-3.md |
+| Agent | Session | PID | Model | Effort | Lane | Tasks | Dispatched | Prompt |
+|---|---|---|---|---|---|---|---|---|
+| [SHOP][SHOP-331][02] | 5677e849 | 96906 | sonnet | xhigh | fleet/identity | 614,615,616,617 | 21:04 | .fleet/.../agent-2.md |
+| [SHOP][SHOP-331][03] | 8a01c3f2 | 97753 | opus *(plan said sonnet; raised: gate design still open)* | max *(touches money)* | money/lease | 427,411,484 | 21:06 | .../agent-3.md |
 ```
 
-**Getting the PID depends on your harness build.** Some expose a socket path per agent whose
-basename is the PID; others report it directly. Whatever the source, **confirm it before you
-trust it** — `ps -p <pid> -o pid=,command=` has to show a Claude Code process. PIDs get
-recycled, and killing an unverified PID kills whatever inherited that number.
+**Prefer the session id over the PID for every lifecycle act.** `claude agents --json` reports
+id, name and state; `claude stop <id>` shuts a session down cleanly and keeps its conversation
+resumable. Reach for the PID only on a build without those commands — and then **confirm it
+before you trust it**: `ps -p <pid> -o pid=,command=` has to show a Claude Code process. PIDs
+get recycled, and killing an unverified PID kills whatever inherited that number.
 
 ## Phase 4 — The loop
 
@@ -348,12 +400,22 @@ mechanism if it has one; if not, tell the human the cadence you need. Each tick:
 
 1. **Query the source of truth for the tasks**, not your memory of the last tick. Count open
    per epic and what closed since the previous tick.
-2. **Check the agents are alive.** A working/shell state means executing; idle means waiting.
+2. **Check the wave-release conditions in the plan.** The plan's dispatch-waves table names what
+   releases each wave ("{KEY-A} merged"). If a condition was met since the last tick, **dispatch
+   the next wave now — before pulling anything from the sink**: a planned lane whose dependency
+   just resolved outranks opportunistic sink work, and nothing else in this loop will ever
+   launch it. Record the new agents in the fleet register like any dispatch.
+3. **Check the agents are alive.** A working/shell state means executing; idle means waiting.
    An idle agent with an open queue is a sign it stalled or finished without saying so: ask.
-3. **Read the messages** that arrived and answer whatever needs your decision.
-4. **Report to the human in a few lines**: how many open, what closed, who is on what, and —
+   **An agent missing from the listing entirely** (crash, reboot, OOM) did not write a handoff —
+   run the dead-agent recovery: inspect its worktree and branches for uncommitted or unmerged
+   work, check for a PR it left open, ticket every leftover into the sink, mark it dead in the
+   register, and decide with what you know whether to redispatch the remainder of its lane
+   (same prompt, fresh worktree) or fold it into another lane.
+4. **Read the messages** that arrived and answer whatever needs your decision.
+5. **Report to the human in a few lines**: how many open, what closed, who is on what, and —
    most importantly — **what depends on them**.
-5. **Reschedule.** Space the tick out when nothing changes; shorten it when there is a near
+6. **Reschedule.** Space the tick out when nothing changes; shorten it when there is a near
    event (CI running, an imminent merge).
 
 ### Signals you need to be able to read
@@ -420,11 +482,20 @@ When an agent reports it is finished:
    test battery running in a child process — killing the parent aborts that midway:
 
 ```bash
-ps -p <pid> -o pid=,command= | head -1   # right agent? (PIDs get recycled)
-pgrep -P <pid>                            # live child => DO NOT kill, ask
-pgrep -f '<this project's test-suite process pattern>'   # battery running on this machine?
+pgrep -P <pid>                            # live child => DO NOT stop, ask first
+pgrep -f "<this project test-suite process pattern>"   # battery running on this machine?
+claude stop <session-id>                  # native, clean, resumable — the normal path
+```
+
+   Only on a build without `claude stop` fall back to raw signals — and then verify the PID
+   first, **again immediately before any escalation**, because it can be recycled between your
+   check and your kill:
+
+```bash
+ps -p <pid> -o pid=,command= | head -1    # must show a Claude Code process
 kill <pid>                                # SIGTERM: lets it close files and sockets
-sleep 2; ps -p <pid> >/dev/null && kill -9 <pid>   # only if it resists
+# wait a moment, re-verify with ps, and only then, if it resists and is still yours:
+kill -9 <pid>
 ```
 
    Fill in the test-suite pattern from the project actually in front of you — the build tool,

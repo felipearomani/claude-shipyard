@@ -115,8 +115,8 @@ do
         fi
     done
     IFS=$OLD_IFS
-
-    [ -n "$LAUNCHER_ALIAS" ] && break
+    # No break: a later rc file may define the alias that pins CLAUDE_CONFIG_DIR,
+    # and the profile-matching alias must win over the first generic one.
 done
 
 # ------------------------------------------------------- probe supported flags
@@ -132,7 +132,12 @@ supports() {
 
 SUPPORTS_BG=$(supports "--bg")
 SUPPORTS_EFFORT=$(supports "--effort")
-SUPPORTS_NAME=$(supports "--name")
+# The dispatch examples use the short form (-n); accept either spelling in the help.
+if [ "$(supports "--name")" = "yes" ] || [ "$(supports "-n,")" = "yes" ]; then
+    SUPPORTS_NAME="yes"
+else
+    SUPPORTS_NAME="no"
+fi
 SUPPORTS_MODEL=$(supports "--model")
 
 # ------------------------------------------------------------ build the command

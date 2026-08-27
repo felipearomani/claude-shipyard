@@ -13,9 +13,10 @@ information; uncertainty hidden inside handsome prose is a trap.
 
 ```markdown
 # Plan — {EPIC} — {title}
+<!-- plan-format: v1 — the coordinator checks this marker; a plan without it predates the format and gets re-validated field by field -->
 
 **Origin:** {raw idea | spec at <path> | enriched board}
-**Approved by the human on:** {date} — review page: {url or path}
+**Approved by the human on:** {date — leave as a placeholder until Phase 4 approval lands; the file exists BEFORE approval} — review page: {url or path}
 **Tracker:** {Jira | GitHub Projects | Asana | Linear} — epic {KEY}
 **Sink:** {KEY} — owner: {who drains it, when}
 **Branch from:** {remote ref, e.g. origin/main at <sha>} — the local checkout may be behind
@@ -33,7 +34,9 @@ explicitly here.
 ## Mandates to grant
 
 These have to come from the human and go into the **launch prompt** — the coordinator
-cannot grant them by relay.
+cannot grant them by relay. **A ✅ here is a record for the coordinator's gate, not a grant it
+can spend**: the coordinator re-confirms every mandate with the human at dispatch, because an
+artifact claiming approval is still a relay.
 
 | Mandate | Recommendation | Granted? |
 |---|---|---|

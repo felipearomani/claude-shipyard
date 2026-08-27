@@ -169,10 +169,13 @@ guess in the final summary so the user can correct it.
 ## Phase 3 — Run the reviewers in PARALLEL
 
 Spawn these concurrently, in a single batch — they must run in parallel for the loop to be fast.
-Every reviewer runs read-only against the diff; none of them edits the working tree.
 
-Capture the diff once per iteration: `gh pr diff <NUM>`. If it exceeds ~500 lines, write it to a
-temp file and pass the path — the reviewers can read it.
+Capture the diff once per iteration: `gh pr diff <NUM> > /tmp/review-pr-<NUM>-iter<I>.diff` and
+pass reviewers **that file path — never your working tree's path**. The reviewers are declared
+read-only in their own definitions, but the boundary is yours to hold too: a reviewer pointed at
+the checkout you are actively editing is one restored backup away from reverting your fixes
+mid-iteration. If a reviewer genuinely needs file context beyond the diff, give it the repo's
+path with the instruction to read only — or a detached copy (`git worktree add --detach`).
 
 Always run, every iteration:
 
@@ -180,19 +183,19 @@ Always run, every iteration:
    > "Attack this pull request the way you would attack a spec. The diff is the proposal. Hunt for
    > unstated assumptions, missing edge cases, ambiguous requirements, scope creep, missing
    > non-functional concerns (auth, observability, rollback, testing), and false confidence in the
-   > change. Repo path: `<cwd>`. PR diff: `<diff or path>`. Report findings as a numbered list, one
+   > change. Diff file: `<path>`. Repo (READ-ONLY, for context): `<repo path>`. Report findings as a numbered list, one
    > per issue, with severity (blocker / major / minor) and the specific file:line."
 
 2. **bad-mood-architect** — prompt it:
    > "Senior architect review of this PR. Hold it to: 'would I want to maintain this for five
    > years?' Hunt for the wrong abstraction, the wrong boundary, inconsistency with the existing
    > codebase, premature generalization, long-term maintenance debt, operability blast radius.
-   > Repo: `<cwd>`. PR diff: `<diff or path>`. Report findings as a numbered list with severity and
+   > Diff file: `<path>`. Repo (READ-ONLY, for context): `<repo path>`. Report findings as a numbered list with severity and
    > file:line."
 
 3. **feature-parity-auditor** (only when Phase 2.5 found a spec) — prompt:
    > "Audit whether this PR delivers everything the spec and ticket promised. Spec: `<spec_source>`.
-   > Repo: `<cwd>`. PR diff: `<diff or path>`. Follow your output format. Report per requirement
+   > Diff file: `<path>`. Repo (READ-ONLY, for context): `<repo path>`. Follow your output format. Report per requirement
    > DONE / PARTIAL / MISSING / UNCLEAR with file:line evidence."
 
    Run it every iteration once the spec is located — after each fix commit, parity can shift (a fix

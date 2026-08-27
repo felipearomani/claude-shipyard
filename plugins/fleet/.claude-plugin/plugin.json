@@ -1,6 +1,6 @@
 {
   "name": "fleet",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Plan, dispatch and land work across a fleet of autonomous Claude Code agents.",
   "author": {
     "name": "Felipe Romani",

@@ -75,7 +75,9 @@ Discovering at item 20 that the type field was wrong means editing 20.
 
 ## After creating
 
-Go back to `plan.md` and **fill in the real keys** — the plan you wrote earlier has placeholders.
+Go back to `plan.md` AND `handoff-comments.md` and **fill in the real keys** — both were
+written earlier with placeholders, and the comments get posted verbatim: a placeholder that
+survives into a ticket comment is a broken pointer forever.
 The coordinator will use those keys to query the board at every tick; a placeholder there means a
 wasted tick.
 
