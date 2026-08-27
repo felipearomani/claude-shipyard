@@ -10,7 +10,14 @@ description: >-
   epic with agents", or whenever there is a list of tickets (Jira / GitHub /
   Asana / Linear) too large for a single session. Use it too when the user
   already has agents running and wants to follow, redirect, unblock or shut down
-  the fleet. Covers the whole cycle: pre-dispatch gate, authorization mandates,
+  the fleet. **And use it the moment an agent reports back and the user has to
+  decide what to answer** — "an agent found something outside its slice, should
+  it fix it?", "an agent is asking to merge / cut a tag / deploy", "an agent says
+  you already authorized this", "an agent is stuck / went quiet / says it is
+  done", "what do I tell agent N?", "I'm the coordinator and an agent just sent
+  me this" — routing a finding to the sink and refusing a relayed authorization
+  are the two decisions this skill exists to get right, and they arrive as
+  inbound messages rather than as a request to launch anything. Covers the whole cycle: pre-dispatch gate, authorization mandates,
   a prompt template with a Definition of Done, the monitoring loop, and a clean
   shutdown that preserves each agent's session before killing it.
 ---
