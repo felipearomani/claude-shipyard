@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "shipyard",
+  "description": "Claude Code plugins for building and running fleets of autonomous coding agents — planning work they can finish unsupervised, dispatching them, and landing the result.",
+  "version": "0.1.0",
+  "owner": {
+    "name": "Felipe Romani",
+    "url": "https://github.com/felipearomani"
+  },
+  "metadata": {
+    "pluginRoot": "./plugins"
+  },
+  "plugins": [
+    {
+      "name": "fleet",
+      "source": "./plugins/fleet",
+      "description": "Plan, dispatch and land work across a fleet of autonomous Claude Code agents. /fleet:planner turns an idea, spec or messy board into a dispatchable work package; /fleet:coordinator runs the fleet from pre-dispatch gate to clean shutdown. Ships /fleet:open-pr, /fleet:review-pr and three adversarial reviewer agents.",
+      "version": "0.1.0",
+      "license": "MIT",
+      "category": "workflow",
+      "keywords": [
+        "multi-agent",
+        "orchestration",
+        "planning",
+        "autonomous-agents",
+        "code-review",
+        "pull-request",
+        "background-agents",
+        "fleet"
+      ]
+    }
+  ]
+}

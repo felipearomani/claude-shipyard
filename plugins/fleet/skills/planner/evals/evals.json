@@ -1,0 +1,97 @@
+{
+  "skill_name": "planner",
+  "notes": "DRY RUN: create nothing in a tracker, publish no real artifact (write the HTML file and stop), launch no agents. Eval 0 needs a real repository in read-only mode to exercise the investigation — see README.md for how to substitute your own. Evals 1-3 are self-contained.",
+  "evals": [
+    {
+      "id": 0,
+      "name": "raw-idea-with-investigation",
+      "prompt": "I have a Go prototype for discovering and printing to a networked thermal printer at {PROTOTYPE_PATH} (canonical target: an Ethernet receipt printer). I want to turn it into a real service the point-of-sale can call: discover printers on the LAN, store the configured ones, and print a receipt. Plan this for me — I want to launch agents on it afterwards.",
+      "setup": "Substitute {PROTOTYPE_PATH} with a path in your workspace holding an older prototype whose functionality has since been at least partly shipped elsewhere. The scenario's value depends on that being real code, not fiction.",
+      "expected_output": "Real investigation of the prototype's source (not assumption), a spec with degenerate states, decomposition into tasks with falsifiable acceptance criteria, non-colliding lanes, a frozen contract for the point-of-sale ↔ service boundary, blockers surfaced, and the package presented for approval before touching a tracker.",
+      "assertions": [
+        "Cites at least one SOURCE file of the prototype (a code file, not its CLAUDE.md/README) with a specific function or behaviour, before proposing the design",
+        "Labels claims about the code as MEASURED/DERIVED/ASSUMED somewhere in the package",
+        "Names concrete degenerate states (e.g. no printer found, printer goes offline mid-print, discovery timeout, printer removed from the network)",
+        "Every proposed task has a falsifiable acceptance criterion — you can imagine the command that proves it — rather than 'works well'",
+        "Groups the tasks into lanes with a declared boundary, and the boundary is at file/glob level rather than only package level",
+        "Freezes, in a file of its own, the contract for the boundary more than one lane crosses (call format, states, error vocabulary) and declares the owner of the shared type/file. If the investigation shows that boundary already exists and does not change, freezing it as 'exists and stays' also satisfies this",
+        "Surfaces blockers that would require the human (e.g. access to a physical printer for testing, the store network, hardware certification)",
+        "Presents the package for approval BEFORE creating anything in a tracker",
+        "Does not implement production code — a bug found in the prototype becomes a task or goes to the sink",
+        "Proposes or mentions the sink epic for review findings, with a defined owner",
+        "Produces a plan.md on disk in the handoff format the coordinator skill reads",
+        "Does not launch, nor propose launching, agents in this session",
+        "States explicitly that dispatch happens in a separate session, and that this session must revalidate the gate before launching",
+        "If it concludes the prototype has been superseded, identifies at least one capability present in it that does NOT exist in the shipped code, citing the source file where that capability lives — or demonstrates it ran the capability diff and found none",
+        "Distinguishes a blocker unblockable by credential from one no agent can resolve (physical hardware, external certification), and says what the fleet does NOT deliver"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "board-with-thin-tasks",
+      "prompt": "I have these 5 open tasks in epic SHOP-200 (persistent cart) and an autonomous agent is picking them up tomorrow. They're weak, take a look:\n\n- SHOP-201 — \"Save cart\" — description: \"the cart has to persist between sessions\"\n- SHOP-202 — \"Merge cart on login\" — description: \"when the user logs in, join the anonymous cart with theirs\"\n- SHOP-203 — \"Expiry\" — description: \"old carts have to disappear\"\n- SHOP-204 — \"Quantity badge in the header\" — description: \"show how many items there are\"\n- SHOP-205 — \"Tests\" — description: \"test coverage for the cart\"\n\nGet them ready for the agents.",
+      "expected_output": "Enrich each task with a falsifiable acceptance criterion and degenerate states, preserving the original text and marking what was added; identify that SHOP-205 ('tests' as its own task) is an antipattern; find the real ambiguities (what wins in a cart merge? what expiry window? does the price change?); group into lanes; present for approval before writing to the tracker.",
+      "assertions": [
+        "Writes a falsifiable acceptance criterion for each task, with a concrete expected state instead of 'works'",
+        "Preserves the original task text and MARKS what was added during planning (authorship and date), rather than replacing the body",
+        "Identifies that SHOP-205 ('test coverage' as a separate task) is problematic and proposes absorbing the tests into the tasks that motivate them",
+        "Surfaces the cart-merge ambiguity (what wins when the same item exists in both: sum the quantities? keep the user's? which price?) instead of leaving the agent to decide",
+        "Surfaces the expiry window as a product decision to seal, with a concrete number proposed",
+        "Names at least four distinct degenerate states with defined behaviour, necessarily including one where the data changed between the add and the login (item price or availability)",
+        "Declares dependencies between the tasks (e.g. 202 depends on 201; 204 depends on the model existing)",
+        "Presents for approval before writing to the tracker",
+        "Every scope addition beyond the original text is marked as a proposal open to veto (or listed under 'out of scope'), rather than entering as a mandatory acceptance criterion with no signalling"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "finished-spec-to-handoff",
+      "prompt": "We already have the closed and approved spec for the notifications module (it's at docs/specs/notifications/spec.md, decided last week): delivery webhook, retry with backoff, a history panel, and a manual resend endpoint. Go backend in internal/notify, Next frontend in apps/web. No need to rewrite the spec — break it into tasks and get everything ready for the coordinator to dispatch tomorrow morning.\n\nAssume the spec covers the functional design but says nothing about acceptance criteria or implementation order.",
+      "expected_output": "Do not rewrite the spec; validate it against the code; decompose into tasks with a DoD; separate backend/frontend lanes with a frozen contract; plan.md in the handoff format; handoff comments for the tasks; approval before the tracker.",
+      "assertions": [
+        "Does NOT rewrite the spec — treats it as input and goes straight to decomposition",
+        "Mentions validating the spec against the current code, acknowledging that specs age",
+        "Separates a backend lane (internal/notify) from a frontend lane (apps/web) with a declared boundary",
+        "Freezes the contract between backend and frontend (payload, delivery states, error codes) with an owner for the shared type",
+        "Produces a plan.md with the lanes section and declared boundaries",
+        "Plans a handoff comment on the tasks pointing at the plan and the lane, in addition to the file on disk",
+        "Lists the mandates the human has to grant the agents (merge on green, tag/deploy, etc.)",
+        "Presents for approval before creating anything in the tracker",
+        "Asks or states which tracker will be used, rather than assuming silently",
+        "Points at the coordinator skill as the next step, without launching agents",
+        "plan.md has the blocker table with a status (open/resolved) and who unblocks each",
+        "plan.md has the table of mandates for the human to grant, with a checkbox/state",
+        "plan.md has the sealed-decisions section with the why of each",
+        "plan.md has the MEASURED/DERIVED/ASSUMED table from the investigation",
+        "plan.md has dispatch waves (what to launch now vs. later), not only the order inside each lane",
+        "The package includes a Definition of Done common to the lanes, including updating the documentation in the same cycle",
+        "Produces the handoff-comments file (one per task) alongside the approval package, rather than only mentioning that it would post them"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "model-and-effort-calibration",
+      "prompt": "I need to plan epic MERC-500 (the payout engine for marketplace sellers) so I can launch agents on it. Five work fronts already mapped:\n\n- MERC-501 — rename the field `seller_id` to `merchant_uuid` across 34 call sites in the `internal/payout` package. The pattern to follow is MERC-320, which did the same for `store_id`. No behaviour changes.\n- MERC-502 — a `GET /payouts/{id}` endpoint returning the payout with its items. Contract already defined, precedent in `GET /orders/{id}`, acceptance criterion written.\n- MERC-503 — deploy the engine to production: run the migration, ship the image, follow the rollout, verify with the runbook's queries. The runbook is written step by step and has been used twice. It's the most business-critical task in the epic — if the payout doesn't go out on Friday, 400 sellers don't get paid.\n- MERC-504 — two concurrent workers are creating duplicate payouts when the same order settles twice inside the reconciliation window. Nobody knows yet where the race happens; the optimistic lock is suspected, but it could be the payment provider's retry. Money goes out twice.\n- MERC-505 — decide whether the payout is computed at order close or by an aggregated nightly job. Depends on knowing whether the current volume fits in a processing window, and nobody has measured it.\n\nPut together the plan for me to approve.",
+      "expected_output": "A model AND effort recommendation per lane, differentiated by the shape of the work: 501 mechanical (mid tier, low/medium effort), 502 well specified (mid tier), 503 critical but fully specified (mid tier — importance is not difficulty), 504 money + unknown cause (high/top tier, max effort), 505 undecidable (read-only spike, high/top tier). A justification per lane, and for anything above the default, what would need specifying.",
+      "assertions": [
+        "Recommends a MODEL for each lane (not one model for the whole epic)",
+        "Recommends an EFFORT level for each lane, distinct from the model",
+        "MERC-503 (a critical deploy but with a step-by-step runbook already used twice) stays at the mid/default tier — it is NOT escalated for being 'the most business-critical'",
+        "MERC-504 (duplicate money, unknown cause) gets the strongest treatment in the epic: the high or top tier, with max or xhigh effort",
+        "MERC-501 (a rename with a named precedent and no behaviour change) gets LOW or medium effort, not the fleet default",
+        "MERC-505 (a decision depending on a measurement nobody has made) becomes a read-only spike instead of direct implementation",
+        "Each recommendation carries a one-line justification tied to the SHAPE of the work (is the specification closed? is the cause known? is there financial risk?), not to declared importance",
+        "For any lane above the default, says what would need to be specified for it to fit the default tier",
+        "The model and effort appear in the approval page NEXT TO the corresponding lane, not in a separate table at the end",
+        "Presents the model/effort recommendations as a proposal open to the human's veto",
+        "Records model and effort in plan.md, in the lane's section",
+        "Does not recommend the top tier for the whole epic out of caution — the differentiation between lanes is visible",
+        "Asks whether the lane should be autonomous BEFORE choosing a model: for MERC-503 (a production deploy), it either carves the irreversible gesture out of the agent's scope, or names where the agent stops and what stays with the human",
+        "Recognizes that the runbook contains no ABORT step — executing the next step is what an agent does well and what is dangerous here",
+        "States that MERC-504 does NOT get cheap with a better specification, because the bottleneck is diagnosis rather than execution (the spec is what the investigation will produce)",
+        "The acceptance criterion for MERC-503 does not promise what the fleet cannot verify (e.g. 'all 400 sellers were paid' depends on a bank statement and on people)",
+        "Treats order/wave and boundary as first-class decisions — MERC-501 touches 34 call sites in the package other lanes work in, so it does not run in parallel with them"
+      ]
+    }
+  ]
+}
