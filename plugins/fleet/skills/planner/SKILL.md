@@ -302,6 +302,21 @@ economize, it produces rework. If you are considering `low` to save, confirm fir
 that the lane really is mechanical — if it contains any decision at all, `low` will
 make the agent decide fast and wrong.
 
+**Whenever you recommend above the default tier, write the exit next to it.** One line naming
+what would have to be specified for that lane to fit the default: the acceptance criterion still
+vague, the decision still open, the contract not yet frozen. There are exactly two honest
+answers, and a lane above the default has to carry one of them:
+
+- **"Here is what would make it default-tier"** — the normal case. An expensive lane is usually
+  an under-specified one, and this line is what lets the reviewer choose between paying more and
+  closing the spec.
+- **"This one is not reducible"** — only for a lane whose bottleneck is *diagnosis* rather than
+  execution, where the spec is what the investigation will produce. Say so explicitly, so nobody
+  tries to economize there later.
+
+A lane above the default carrying neither line is an unreviewed cost. Do not write the
+recommendation until you know which of the two it is.
+
 - Record both recommendations in `plan.md`, in the lane table, **with the why**.
   Without the why the coordinator has no basis to re-evaluate.
 

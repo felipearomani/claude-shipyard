@@ -28,6 +28,14 @@ DRY RUN MODE:
 And, in the with-skill arm, point at the skill's `SKILL.md` and tell the agent to follow it,
 including the files under `references/` that it asks for.
 
+**Grant the tools the case actually needs.** With no read grant the skill runs on its `SKILL.md`
+body alone, and with no write grant it cannot produce the plan file — an assertion about what
+`plan.md` contains can then only fail, which is a broken instrument rather than a finding. Grant
+read and write into the output directory, and keep the same grant in both arms so the plugin
+stays the only difference. Measured on this suite: granting read changed nothing, because both
+skill bodies turned out to be self-sufficient for these cases — worth re-checking rather than
+assuming, before anyone moves content out of a `SKILL.md` into `references/`.
+
 Eval 0 is the only one that reads a real repository (read-only) — the investigation is what it
 tests, so **do not** turn it into a fictional scenario. Substitute `{PROTOTYPE_PATH}` in the
 prompt with a path in your own workspace holding an older prototype whose functionality has

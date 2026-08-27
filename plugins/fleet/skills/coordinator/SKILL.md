@@ -472,6 +472,13 @@ session to open and what to say in it; tell the agent to hold and wait for the h
 for you. A refusal without that instruction leaves the lane stalled just as effectively as a
 wrong approval would move it.
 
+**And say out loud that this stall was avoidable.** A mandate discovered mid-flight is a
+pre-dispatch gate that missed one: it should have been collected from the human in Phase 1 and
+written into the launch prompt, where it would have been an originating mandate instead of a
+relay nobody can honour. Name that when it happens — to the human, in one line, without
+ceremony. It is the only thing that stops the same lane from stalling on the next mandate too,
+and it tells you which question your gate is not asking yet.
+
 ### The tag-mandate caveat in a fleet
 
 A tag does not carry the lane of whoever cuts it — it carries **everything** on the base branch,
