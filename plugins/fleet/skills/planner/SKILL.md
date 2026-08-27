@@ -12,9 +12,15 @@ description: >-
   session, or asks to "plan this epic", "break this into tasks", "decompose
   this", "build the backlog", "write the spec for this", "get this ready for the
   agents", "these tickets are too thin / have no acceptance criteria", or
-  whenever there is a board of vague tickets somebody will have to execute. It
-  is the step BEFORE the coordinator skill — if the user wants to launch agents
-  and the work is not specified yet, start here.
+  whenever there is a board of vague tickets somebody will have to execute.
+  **Use it just as much once a plan exists and the user is working on it** —
+  "that model pick is too expensive", "change lane 2", "that acceptance criterion
+  doesn't cover X", "approved, create the tasks now", "the spec changed, update
+  the plan", "add a task to lane 3", "I'm looking at the approval page" — because
+  revising a lane, re-cutting a boundary, and writing the package into the
+  tracker are phases of this skill, not follow-up chatter after it. It is the
+  step BEFORE the coordinator skill — if the user wants to launch agents and the
+  work is not specified yet, start here.
 ---
 
 # Fleet Planner

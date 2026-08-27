@@ -11,6 +11,52 @@ skill becomes the input of an autonomous fleet, so an error here multiplies by N
 | 2 | `finished-spec-to-handoff` | Not rewriting the spec, and the full handoff machinery (plan in format, waves, mandates, comments) |
 | 3 | `model-and-effort-calibration` | Model and effort chosen by the *shape* of the work rather than its declared importance; the destructive gesture carved out; order treated as a first-class decision |
 
+## Read the firing indicator before you read the score
+
+Every case's first assertion is a **plugin-fired indicator**, not a criterion. Report it
+separately and never add it to the score. It answers a question the rest of the suite cannot:
+*was the skill consulted at all?*
+
+Skills are model-invoked, so this is not a given. Measured on the coordinator's
+authorization-relay case, the skill fired in **7 of 11 runs** and the other four answered from
+scratch and scored like the no-plugin baseline. Firing was bimodal — the skill's vocabulary was
+either present or entirely absent, never partial — so a run that did not fire drags the mean
+without looking like anything in particular.
+
+That cost four rounds of edits to a skill body a third of the runs were not reading. The failures
+looked like content defects: an assertion "regressing" between rounds, seven assertions reading as
+"flaky". They were one binary variable upstream, measured as if it were nine independent ones.
+
+So: if the indicator is absent in a run, that run says nothing about the guidance. Fix the
+trigger — the `description` — before touching the body. The fix for the coordinator was six
+quoted triggers for inbound agent messages; it moved firing from 7/11 to 12/12 (Fisher exact,
+one-sided p = 0.037) and the score from 3.7/9 to 8.5/9, with no change to the body at all.
+
+## Open: this skill's mid-flight phases have no measured trigger
+
+Phases 4 to 6 — iterating the approval page, creating in the tracker, writing the handoff — are
+reached today only by a session that entered the skill at phase 1. A plan is normally reviewed in
+a different session from the one that produced it, so that path falls outside.
+
+Measured on a prompt that is phase 4 in operation ("you planned MERC-500 yesterday, change two
+things on the approval page before we create anything"):
+
+    current description   0/5 fired   (no marker of any kind; identical to the no-plugin arm)
+    + mid-flight triggers 2/5 fired   Fisher one-sided p = 0.22 — NOT significant
+
+The diagnosis is solid: five runs, zero markers. **The fix is not.** The same class of patch moved
+the coordinator from 7/11 to 12/12 (p = 0.037) with two independent markers per run; here the two
+"fired" runs matched a single occurrence of one weak word — "falsifiable", which someone
+discussing acceptance criteria may reach for unaided. Two readings survive, and picking one
+without measuring is the mistake this suite exists to prevent:
+
+1. the added triggers do not match this prompt shape;
+2. they help, and the detector is too weak to see it.
+
+Before treating this as solved: build a two-marker detector (as the coordinator has), raise n, and
+re-run both arms. The triggers currently in the description are kept because the gap they address
+is real, not because they were shown to close it.
+
 ## How to run
 
 Two subagents per case in the **same** round: one with the skill, one without. Running the
