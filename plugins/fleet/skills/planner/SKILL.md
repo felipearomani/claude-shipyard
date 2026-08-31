@@ -184,6 +184,26 @@ becomes the CI queue, not the agents — more lanes stop buying speed.
 Declare the boundary as a **file glob**, not a package: merge conflicts happen in
 files. And name the owner of every shared file.
 
+**Prefer independent lanes to stacked ones.** A stacked lane (lane B branched off lane A's PR)
+looks like clean sequencing and becomes a trap the moment the base merges by **squash**:
+squashing rewrites the commits, so the stacked branch then conflicts with its own
+already-merged content, and the platform does not auto-retarget while the base branch still
+exists. Resolving that by merge is the dangerous path — in a real epic it produced 16 conflicts
+and **silently reintroduced a design decision the team had deliberately removed**, with nothing
+flagging it.
+
+If you must stack, the plan carries the restack recipe and the one datum it needs:
+
+```
+Restack (after the base merges by squash):
+  git rebase --onto <new-base> <BASE-TIP-SHA-AT-DISPATCH>
+```
+
+**Record the base's tip SHA in the plan at dispatch time** — the recipe needs the old tip, not
+the branch name, because the branch has moved by the time you need it. Getting this right
+replayed 16 commits with zero conflicts and shrank the PR from +8115/−104 across 49 files to
++4489/−146 across 39, the difference being the base's content counted twice.
+
 ### 3.3 A frozen contract between lanes
 
 Whenever two lanes meet at an interface (API↔UI, producer↔consumer, shared schema),

@@ -208,6 +208,12 @@ Present, on one screen: the lanes, what each agent will do, the mandates you nee
 to grant, and what you could not resolve. Use a structured question when there is a real
 choice to make.
 
+**Ask who drains the sink, and when, on this same screen — and do not dispatch without an
+answer.** It is one more question at a gate you are already running, and skipping it is how the
+sink becomes the rabbit-hole through the back door: in a real epic it held findings for five days
+with nobody responsible, and one of them was a prediction of the exact defect that later shipped
+(see Phase 5). An unowned sink is not a queue, it is a place things go.
+
 **Do not launch anything while a known unresolved block remains.** An agent launched
 against a block becomes an open process burning context and producing "I am stuck"
 messages.
@@ -432,7 +438,10 @@ mechanism if it has one; if not, tell the human the cadence you need. Each tick:
 - **A rising task count** is expected while the reviews run — as long as the new ones land in
   the sink. A count rising *inside* the round's epic is a rabbit-hole; cut it.
 - **A congested CI queue** becomes the real bottleneck. Do not confuse it with a stalled agent;
-  and know that latency tests degrade under contention and fail unrelated PRs.
+  and know that latency tests degrade under contention and fail unrelated PRs. **And look outside
+  your own fleet**: a parked approval gate belonging to another team can silently starve the
+  shared queue your lanes need. Check the whole pipeline, not only your runs — the bottleneck may
+  not be yours, and no amount of pushing your agents will move it.
 - **An agent silent for a long time** — ask directly. Do not presume.
 - **Idle is a SAMPLE, not a state.** An agent with a five-minute integration suite shows up idle
   in the gap between commands, and two short ticks in a row give you two samples of the same
@@ -453,7 +462,22 @@ domain boundaries (do not send the frontend agent into the package another agent
 
 When an agent reports it is finished:
 
-1. **Verify in the source of truth** that its tasks really are closed — do not accept the
+1. **Put a human in front of the built artifact — as a step, not as a hope.** Before you accept
+   a lane as done, someone has to open the screen, hit the endpoint, read the output. Not the
+   diff, not the tests: the thing.
+
+   In a real epic a panel shipped a green "covered" verdict above a timeline whose first two rows
+   were dated before the event that produced the verdict. It was technically correct — those rows
+   were other coverage levels and the verdict is computed for one of them — but nothing on screen
+   said so. Two adversarial reviewers, a full suite and three agents passed over it. A human read
+   it in about four seconds and said "this doesn't add up".
+
+   **And search the sink before you gate a lane.** In that same epic an agent had already filed a
+   ticket predicting exactly that defect, days earlier; it sat unread because the sink had no
+   owner. A sink entry that predicts a defect in the lane you are about to close is the cheapest
+   review available to you.
+
+2. **Verify in the source of truth** that its tasks really are closed — do not accept the
    report. A merge with the ticket still open is common.
 
    Be suspicious of loose claims in the report. Three recurring ones: "deploy followed
@@ -462,23 +486,23 @@ When an agent reports it is finished:
    and "manual tests via HTTP" when some end-to-end case touches UI — an HTTP client does
    not exercise sessions, CSP or redirects, and that is where screen bugs hide.
 
-2. **Ask for the handoff, and ask what was left half-done.** Not just what was done: is
+3. **Ask for the handoff, and ask what was left half-done.** Not just what was done: is
    anything uncommitted, any branch unmerged, any worktree dirty, any TODO left in the code,
    any follow-up identified and not ticketed? Anything you tried and abandoned, or worked
    around? What was worked around is the information that most reliably gets lost, because
    nobody offers it spontaneously.
 
-3. **Convert the exit debt into tickets NOW**, in the sink, before killing. After the kill
+4. **Convert the exit debt into tickets NOW**, in the sink, before killing. After the kill
    there is nobody to ask, and a finding that becomes only your observation dies when your
    session compacts.
 
-4. **Preserve the session before killing it.** The written handoff from step 2 is the portable
+5. **Preserve the session before killing it.** The written handoff from step 3 is the portable
    guarantee and is **mandatory** — it is a file on disk that survives everything. If the
    workspace also has session-memory tooling, run its save/close step in the agent's session
    and **wait for confirmation** before proceeding. Killing first loses whatever was not
    written down.
 
-5. **Check for a live child before killing.** An "idle" agent may have a deploy, a build or a
+6. **Check for a live child before killing.** An "idle" agent may have a deploy, a build or a
    test battery running in a child process — killing the parent aborts that midway:
 
 ```bash
@@ -506,14 +530,14 @@ kill -9 <pid>
    `kill` with no flag is SIGTERM, and that is what you want: the process closes its
    descriptors and socket. Leading with `kill -9` leaves debris and can lose an in-flight write.
 
-6. **Hygiene after the kill**, or the machine accumulates: remove whatever per-agent artifact
+7. **Hygiene after the kill**, or the machine accumulates: remove whatever per-agent artifact
    your harness leaves behind (a stale socket file, a lock, a temp dir), remove worktrees with
    `git worktree remove` **without** `--force` — the refusal is information, not an obstacle —
    and sweep leftover test containers if the project uses them, guarded by the same process
-   pattern from step 5. Without this, the harness's runtime directory fills with hundreds of
+   pattern from step 6. Without this, the harness's runtime directory fills with hundreds of
    leftovers and your next agent listing becomes unreadable.
 
-7. **Update the fleet register**, marking the agent as shut down.
+8. **Update the fleet register**, marking the agent as shut down.
 
 Killing without preserving the session wastes the night's learning. Preserving without killing
 leaves an open process burning resources and confusing the next listing.
@@ -527,6 +551,16 @@ approval, and treating it as one is permission laundering.
 The practical consequence: **authorization has to be in the launch prompt**, where it is an
 originating mandate rather than a relay. That is why the pre-dispatch gate collects the mandates
 BEFORE.
+
+**The rule runs in both directions, and the second half is the one you will break.** You cannot
+accept a relayed authorization from an agent — and you cannot assert one toward an agent either.
+**A mandate exists only if it is written in the prompt file you wrote.** Before telling an agent
+that something "came with the mandate", grep the prompt: `grep -ci '<the mandate>'
+<path-to-that-agent-prompt>`. Zero means it is not there, whatever you remember. In a real epic a
+coordinator asserted a production-gate mandate to an agent three times; the grep on that agent's
+prompt returned 0 and on a different lane's prompt returned 4. The agent declined, correctly, and
+the coordinator was the one out of line. When the grep comes back empty, the answer has to come
+from the human in that agent's session — the same route as any other missing mandate.
 
 The standard mandates to negotiate with the human (adjust to context):
 

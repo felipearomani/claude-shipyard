@@ -86,6 +86,23 @@ branch did not yet carry the number.
 brings the treadmill back. The right gate probably compares the branch's migration
 numbers against the base's, rather than requiring the branch to be current.
 
+### Stacked PR meets squash merge
+
+**Symptom:** the base PR merges, and the branch stacked on it now conflicts with content it
+already contains. The platform does not auto-retarget, because the merge queue leaves the base
+branch in place.
+
+**Cause:** squash rewrites the base's commits, so the stacked branch's ancestry no longer shares
+them.
+
+**The dangerous part:** resolving it by merge reintroduces whatever the base deliberately
+removed, and nothing flags it. One case brought back a TTL a prior PR had removed on purpose,
+buried in 16 conflicts.
+
+**Cure:** `git rebase --onto <new-base> <old-tip-SHA-of-the-base>` — the **SHA**, not the branch
+name, because the branch has moved. Record that SHA at dispatch, while it is still easy to get.
+And prefer independent lanes over stacked ones in the first place.
+
 ### Runner queue serializing everything
 
 **Symptom:** finished PRs sitting for tens of minutes; looks like a stalled agent.

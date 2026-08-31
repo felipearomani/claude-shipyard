@@ -110,8 +110,11 @@ prune optional packages for other platforms and break CI.
    a. the **devils-advocate** agent on the diff;
    b. a **second, independent reviewer** on the diff — the `bad-mood-architect` agent, or any
       other reviewer that did not produce the code.
-   Fix what is real; justify refusals on the ticket. **If the two disagree, MEASURE** — do
-   not pick a side. In the observed cases, whoever had not executed was the one who was wrong.
+   Fix what is real; justify refusals on the ticket. **A reviewer finding is a hypothesis, not
+   a verdict** — a confident claim with a `file:line` can still be false, so measure before you
+   change code on the strength of one. Refusing a reviewer WITH a measurement is correct work,
+   not resistance. **If the two disagree, MEASURE** — do not pick a side. In the observed cases,
+   whoever had not executed was the one who was wrong.
 9. **PR**: Conventional Commits with the ticket key. Open it however this workspace does
    (`gh pr create`, or the `/fleet:open-pr` skill if this plugin is installed), then follow it
    to merge. Follow the repo's commit conventions; do not add an authorship footer that
@@ -140,6 +143,35 @@ prune optional packages for other platforms and break CI.
 **Keep the tickets alive as you go** — a comment at every decision taken, every measurement
 made, every blocker hit. The ticket is the record that outlives your session; our conversation
 does not.
+
+## Prove your instrument before you report green (mandatory)
+
+**Before you report any green sweep — a mutation run, a lint pass, an audit grep, a smoke
+test, a coverage claim — break the mechanism on purpose and confirm the check goes red.**
+A check you have never seen fail is not evidence. "0 failures" and "I cannot detect failure"
+look identical on screen and are opposites in reality, and the second one disguises itself
+as success.
+
+Three instruments reported green about the wrong thing in a single real epic:
+
+- A mutation harness reported 0 red for every mutation, including ones that break the build.
+  It scanned for a per-test failure glyph — and the runner prints glyphs **only on a TTY**;
+  piped, it emits the summary alone. Rewritten to parse `Tests: N failed`, it immediately
+  caught a real regression: a sloppy block replacement had silently deleted four tests.
+- A grep for a CSS rule returned 0 against a bundle that contained it. In that bundle format
+  the CSS is inlined into a JS string, so the escapes are doubled.
+- A lint run scoped to the directory being edited could not see the file that broke CI, which
+  lives in another package. Narrowing to your own directory structurally guarantees the blind
+  spot covers your newest file.
+
+**Corollary for any tool whose output changes outside a terminal: parse the stable summary
+line, never glyphs, colour or progress output.**
+
+**And read code by ref, not by directory.** Use `git show <ref>:<path>` and **name the ref in
+your finding**. Worktree directory names are aspirational — they do not track which branch is
+checked out, and a service may build a pinned module rather than the sibling directory you
+read. A finding citing `file:line` with no ref is not MEASURED: nobody can reproduce which
+file you actually read.
 
 ## Evidence rules (mandatory)
 
@@ -172,6 +204,19 @@ review, and the round never converges.
   loop, it does not end it: answer and go straight back to the next action of the task you
   were on. Sitting still after answering is indistinguishable from having stalled, and costs
   a full turn of their loop to discover.
+- **Before you park on anything — a human approval, a gate, a third party — checkpoint to
+  disk first.** Commit or stash your work on a **named branch** (not a detached HEAD: a
+  detached commit dies with the worktree, and worktrees get removed), then write into your
+  status file **how to bring your work back up**: the exact command, the port, the branch, the
+  fixture, the URL the human is meant to look at. A parked agent is idle for hours and idle is
+  where agents die; whatever you did not write down dies with you. Do this BEFORE parking, not
+  when somebody asks.
+- **If a permission or credential is denied, report it and stop that thread — do not route
+  around it.** Finding another path to a blocked action is the tempting move and the wrong
+  one. Say what was denied, what it was for, and go to your next task.
+- **If you reported something you can no longer reproduce, retract it** to whoever you told,
+  with the measurement that disproved it. Retracting is part of the job, not an admission —
+  an unretracted false claim sends somebody else chasing it for hours.
 - **If you need to ask the human something, ask and KEEP WORKING** on something else in your
   queue. A question to the human blocks your session until they answer — and while it does,
   **not even the coordinator can redirect you**, because a peer message does not resume a
